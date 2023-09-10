@@ -43,6 +43,10 @@ namespace v2rayN.Views
             this.PreviewKeyDown += MainWindow_PreviewKeyDown;
             btnAutofitColumnWidth.Click += BtnAutofitColumnWidth_Click;
             txtServerFilter.PreviewKeyDown += TxtServerFilter_PreviewKeyDown;
+            lstProfiles.MouseDown += (s, e) =>
+            {
+                lstProfiles.Focus();
+            };
             lstProfiles.PreviewKeyDown += LstProfiles_PreviewKeyDown;
             lstProfiles.SelectionChanged += lstProfiles_SelectionChanged;
             lstProfiles.LoadingRow += LstProfiles_LoadingRow;
