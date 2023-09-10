@@ -55,7 +55,7 @@ namespace v2rayN.Views
                 lstProfiles.Drop += LstProfiles_Drop;
             }
 
-            ViewModel = new MainWindowViewModel(MainSnackbar.MessageQueue!, UpdateViewHandler);
+            ViewModel = new MainWindowViewModel(MainSnackbar.MessageQueue!, UpdateViewHandler, SelectProfilesHandler);
             Locator.CurrentMutable.RegisterLazySingleton(() => ViewModel, typeof(MainWindowViewModel));
 
             for (int i = Global.MinFontSize; i <= Global.MinFontSize + 8; i++)
@@ -254,6 +254,25 @@ namespace v2rayN.Views
             else if (action == EViewAction.ProfilesFocus)
             {
                 lstProfiles.Focus();
+            }
+        }
+
+        private void SelectProfilesHandler(IList<string> profileIds)
+        {
+            lstProfiles.UnselectAll();
+            foreach (var id in profileIds)
+            {
+                foreach (var item in lstProfiles.Items)
+                {
+                    if (item is ProfileItem p && p.indexId == id)
+                    {
+                        if (lstProfiles.ItemContainerGenerator.ContainerFromItem(item) is DataGridRow row)
+                        {
+                            row.IsSelected = true;
+                        }
+                        break;
+                    }
+                }
             }
         }
 

@@ -38,6 +38,7 @@ namespace v2rayN.ViewModels
         private readonly PaletteHelper _paletteHelper = new();
         private Dictionary<string, bool> _dicHeaderSort = new();
         private Action<EViewAction> _updateView;
+        private readonly Action<IList<string>> _selectProfiles;
 
         #endregion private prop
 
@@ -247,9 +248,10 @@ namespace v2rayN.ViewModels
 
         #region Init
 
-        public MainWindowViewModel(ISnackbarMessageQueue snackbarMessageQueue, Action<EViewAction> updateView)
+        public MainWindowViewModel(ISnackbarMessageQueue snackbarMessageQueue, Action<EViewAction> updateView, Action<IList<string>> selectProfiles)
         {
             _updateView = updateView;
+            _selectProfiles = selectProfiles;
             ThreadPool.RegisterWaitForSingleObject(App.ProgramStarted, OnProgramStarted, null, -1, false);
 
             Locator.CurrentMutable.RegisterLazySingleton(() => new NoticeHandler(snackbarMessageQueue), typeof(NoticeHandler));
@@ -1238,7 +1240,9 @@ namespace v2rayN.ViewModels
                 return;
             }
             //ClearTestResult();
+            var selectedIds = lstSelecteds.Select(it => it.indexId).ToList();
             await new SpeedtestHandler(_config, _coreHandler, lstSelecteds, actionType, UpdateSpeedtestHandler).RunAsync();
+            _selectProfiles(selectedIds);
         }
 
         private void Export2ClientConfig()
