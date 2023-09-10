@@ -1227,7 +1227,7 @@ namespace v2rayN.ViewModels
             }
         }
 
-        public void ServerSpeedtest(ESpeedActionType actionType)
+        public async void ServerSpeedtest(ESpeedActionType actionType)
         {
             if (actionType == ESpeedActionType.Mixedtest)
             {
@@ -1238,7 +1238,7 @@ namespace v2rayN.ViewModels
                 return;
             }
             //ClearTestResult();
-            new SpeedtestHandler(_config, _coreHandler, lstSelecteds, actionType, UpdateSpeedtestHandler);
+            await new SpeedtestHandler(_config, _coreHandler, lstSelecteds, actionType, UpdateSpeedtestHandler).RunAsync();
         }
 
         private void Export2ClientConfig()

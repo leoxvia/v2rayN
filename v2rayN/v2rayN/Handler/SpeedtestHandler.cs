@@ -15,11 +15,6 @@ namespace v2rayN.Handler
         private ESpeedActionType _actionType;
         private Action<string, string, string> _updateFunc;
 
-        public SpeedtestHandler(Config config)
-        {
-            _config = config;
-        }
-
         public SpeedtestHandler(Config config, CoreHandler coreHandler, List<ProfileItem> selecteds, ESpeedActionType actionType, Action<string, string, string> update)
         {
             _config = config;
@@ -46,10 +41,14 @@ namespace v2rayN.Handler
                     configType = it.configType
                 });
             }
+        }
+
+        public Task RunAsync()
+        {
             //clear test result
             foreach (var it in _selecteds)
             {
-                switch (actionType)
+                switch (_actionType)
                 {
                     case ESpeedActionType.Ping:
                     case ESpeedActionType.Tcping:
@@ -71,69 +70,51 @@ namespace v2rayN.Handler
                 }
             }
 
-            switch (actionType)
+            return _actionType switch
             {
-                case ESpeedActionType.Ping:
-                    Task.Run(RunPing);
-                    break;
-
-                case ESpeedActionType.Tcping:
-                    Task.Run(RunTcping);
-                    break;
-
-                case ESpeedActionType.Realping:
-                    Task.Run(RunRealPing);
-                    break;
-
-                case ESpeedActionType.Speedtest:
-                    Task.Run(RunSpeedTestAsync);
-                    break;
-
-                case ESpeedActionType.Mixedtest:
-                    Task.Run(RunMixedtestAsync);
-                    break;
-            }
+                ESpeedActionType.Ping => RunPingAsync(),
+                ESpeedActionType.Tcping => RunTcpingAsync(),
+                ESpeedActionType.Realping => RunRealPingAsync(),
+                ESpeedActionType.Speedtest => RunSpeedTestAsync(),
+                ESpeedActionType.Mixedtest => RunMixedtestAsync(),
+                _ => Task.CompletedTask,
+            };
         }
 
-        private async Task RunPingSubAsync(Action<ServerTestItem> updateFun)
+        private Task RunPingSubAsync(Action<ServerTestItem> updateFun)
         {
-            try
-            {
-                foreach (var it in _selecteds.Where(it => it.configType != EConfigType.Custom))
+            var tasks =
+                _selecteds
+                .Where(it => it.configType != EConfigType.Custom)
+                .Select(it => Task.Run(() =>
                 {
                     try
                     {
-                        Task.Run(() => updateFun(it));
+                        updateFun(it);
                     }
                     catch (Exception ex)
                     {
                         Utils.SaveLog(ex.Message, ex);
                     }
-                }
+                }));
+            return Task.WhenAll(tasks);
+        }
 
-                await Task.Delay(10);
-            }
-            catch (Exception ex)
+        private Task RunPingAsync()
+        {
+            return RunPingSubAsync((ServerTestItem it) =>
             {
-                Utils.SaveLog(ex.Message, ex);
-            }
+                long time = Ping(it.address);
+                var output = FormatOut(time, Global.DelayUnit);
+
+                ProfileExHandler.Instance.SetTestDelay(it.indexId, output);
+                UpdateFunc(it.indexId, output);
+            });
         }
 
-        private async void RunPing()
+        private Task RunTcpingAsync()
         {
-            await RunPingSubAsync((ServerTestItem it) =>
-             {
-                 long time = Ping(it.address);
-                 var output = FormatOut(time, Global.DelayUnit);
-
-                 ProfileExHandler.Instance.SetTestDelay(it.indexId, output);
-                 UpdateFunc(it.indexId, output);
-             });
-        }
-
-        private async void RunTcping()
-        {
-            await RunPingSubAsync((ServerTestItem it) =>
+            return RunPingSubAsync((ServerTestItem it) =>
             {
                 int time = GetTcpingTime(it.address, it.port);
                 var output = FormatOut(time, Global.DelayUnit);
@@ -143,34 +124,26 @@ namespace v2rayN.Handler
             });
         }
 
-        private Task RunRealPing()
+        private async Task RunRealPingAsync()
         {
             int pid = -1;
             try
             {
                 string msg = string.Empty;
 
-                pid = _coreHandler.LoadCoreConfigString(_selecteds);
+                pid = await LoadCoreAsync();
                 if (pid < 0)
                 {
                     UpdateFunc("", ResUI.FailedToRunCore);
-                    return Task.CompletedTask;
+                    return;
                 }
 
-                DownloadHandle downloadHandle = new DownloadHandle();
+                DownloadHandle downloadHandle = new();
 
-                List<Task> tasks = new();
-                foreach (var it in _selecteds)
-                {
-                    if (!it.allowTest)
-                    {
-                        continue;
-                    }
-                    if (it.configType == EConfigType.Custom)
-                    {
-                        continue;
-                    }
-                    tasks.Add(Task.Run(async () =>
+                var tasks =
+                    _selecteds
+                    .Where(it => it.allowTest && it.configType != EConfigType.Custom)
+                    .Select(async it =>
                     {
                         try
                         {
@@ -186,9 +159,8 @@ namespace v2rayN.Handler
                         {
                             Utils.SaveLog(ex.Message, ex);
                         }
-                    }));
-                }
-                Task.WaitAll(tasks.ToArray());
+                    });
+                await Task.WhenAll(tasks);
             }
             catch (Exception ex)
             {
@@ -199,8 +171,6 @@ namespace v2rayN.Handler
                 if (pid > 0) _coreHandler.CoreStopPid(pid);
                 ProfileExHandler.Instance.SaveTo();
             }
-
-            return Task.CompletedTask;
         }
 
         private async Task RunSpeedTestAsync()
@@ -211,7 +181,7 @@ namespace v2rayN.Handler
             //    _selecteds = _selecteds.OrderBy(t => t.delay).ToList();
             //}
 
-            pid = _coreHandler.LoadCoreConfigString(_selecteds);
+            pid = await LoadCoreAsync();
             if (pid < 0)
             {
                 UpdateFunc("", ResUI.FailedToRunCore);
@@ -268,7 +238,7 @@ namespace v2rayN.Handler
         private async Task RunSpeedTestMulti()
         {
             int pid = -1;
-            pid = _coreHandler.LoadCoreConfigString(_selecteds);
+            pid = await LoadCoreAsync();
             if (pid < 0)
             {
                 UpdateFunc("", ResUI.FailedToRunCore);
@@ -326,7 +296,7 @@ namespace v2rayN.Handler
 
         private async Task RunMixedtestAsync()
         {
-            await RunRealPing();
+            await RunRealPingAsync();
 
             await Task.Delay(1000);
 
@@ -346,7 +316,7 @@ namespace v2rayN.Handler
 
             try
             {
-                if (!IPAddress.TryParse(url, out IPAddress ipAddress))
+                if (!IPAddress.TryParse(url, out IPAddress? ipAddress))
                 {
                     IPHostEntry ipHostInfo = System.Net.Dns.GetHostEntry(url);
                     ipAddress = ipHostInfo.AddressList[0];
@@ -422,6 +392,11 @@ namespace v2rayN.Handler
         private void UpdateFunc(string indexId, string delay, string speed = "")
         {
             _updateFunc(indexId, delay, speed);
+        }
+
+        private Task<int> LoadCoreAsync()
+        {
+            return Task.Run(() => _coreHandler.LoadCoreConfigString(_selecteds));
         }
     }
 }
