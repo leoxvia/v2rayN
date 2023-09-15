@@ -195,12 +195,13 @@ namespace v2rayN.Handler
         {
             var autoUpdateGeoTime = DateTime.Now;
 
-            await Task.Delay(1000 * 120);
             Utils.SaveLog("UpdateTaskRunGeo");
 
             var updateHandle = new UpdateHandle();
             while (true)
             {
+                await Task.Delay(1000 * 3600);
+
                 var dtNow = DateTime.Now;
                 if (config.guiItem.autoUpdateInterval > 0)
                 {
@@ -213,8 +214,6 @@ namespace v2rayN.Handler
                         autoUpdateGeoTime = dtNow;
                     }
                 }
-
-                await Task.Delay(1000 * 3600);
             }
         }
 
