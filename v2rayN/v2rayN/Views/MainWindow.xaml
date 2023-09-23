@@ -37,15 +37,19 @@
 
     <materialDesign:DialogHost
         Identifier="RootDialog"
+        IsTabStop="False"
         SnackbarMessageQueue="{Binding ElementName=MainSnackbar, Path=MessageQueue}"
         Style="{StaticResource MaterialDesignEmbeddedDialogHost}">
         <Grid>
             <DockPanel>
-                <ToolBarTray DockPanel.Dock="Top">
+                <ToolBarTray
+                    DockPanel.Dock="Top"
+                    KeyboardNavigation.ControlTabNavigation="Continue">
                     <ToolBar
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         ClipToBounds="True"
+                        KeyboardNavigation.TabNavigation="Continue"
                         Style="{StaticResource MaterialDesignToolBar}">
                         <Menu Margin="0,1" Style="{StaticResource ToolbarMenu}">
                             <MenuItem Padding="8,0">
@@ -750,6 +754,8 @@
             </DockPanel>
             <tb:TaskbarIcon
                 x:Name="tbNotify"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
                 IconSource="/v2rayN.ico"
                 NoLeftClickDelay="True">
                 <tb:TaskbarIcon.ContextMenu>

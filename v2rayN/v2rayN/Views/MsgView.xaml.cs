@@ -1,4 +1,5 @@
 using ReactiveUI;
+using System.ComponentModel;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Threading;
@@ -18,6 +19,9 @@ namespace v2rayN.Views
         public MsgView()
         {
             InitializeComponent();
+
+            if (DesignerProperties.GetIsInDesignMode(this)) return;
+
             _config = LazyConfig.Instance.GetConfig();
             MessageBus.Current.Listen<string>("MsgView").Subscribe(x => DelegateAppendText(x));
             Global.PresetMsgFilters.ForEach(it =>
